@@ -2,7 +2,7 @@ import numba
 import numpy as np
 
 
-@numba.njit
+@numba.njit(fastmath=True)
 def beta_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     rp_centered = rp - np.mean(rp)
     rb_centered = rb - np.mean(rb)
@@ -32,7 +32,7 @@ def beta(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return beta_numpy(rp, rb)
 
 
-@numba.njit
+@numba.njit(fastmath=True)
 def alpha_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.floating) -> np.floating:
     return np.mean(rp) - (rf + (np.mean(rb) - rf) * beta_numpy_single(rp, rb))
 
@@ -85,7 +85,7 @@ def sharpe(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return sharpe_numpy(rp, rf)
 
 
-@numba.njit
+@numba.njit(fastmath=True)
 def treynor_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return (np.mean(rp) - rf) / beta_numpy_single(rp, rb)
 
@@ -138,7 +138,7 @@ def sortino(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return sortino_numpy(rp, rf)
 
 
-@numba.njit
+@numba.njit(fastmath=True)
 def information_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return (np.mean(rp) - np.mean(rb)) / tracking_error_numpy_single(rp, rb)
 
@@ -218,7 +218,7 @@ def down_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return down_capture_numpy(rp, rb)
 
 
-@numba.njit
+@numba.njit(fastmath=True)
 def capture_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return up_capture_numpy(rp, rb) / down_capture_numpy(rp, rb)
 
