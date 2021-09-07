@@ -6,7 +6,7 @@ import numpy as np
 def beta_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     rp_centered = rp - np.mean(rp)
     rb_centered = rb - np.mean(rb)
-    rb_var = np.mean(np.square(rb))
+    rb_var: np.floating = np.mean(np.square(rb_centered))
     cov = np.mean(rp_centered * rb_centered)
     return cov / rb_var
 
