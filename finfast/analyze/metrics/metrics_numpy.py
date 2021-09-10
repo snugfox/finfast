@@ -140,7 +140,8 @@ def sortino(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
 
 @numba.njit(fastmath=True)
 def information_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
-    return (np.mean(rp) - np.mean(rb)) / tracking_error_numpy_single(rp, rb)
+    eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rp == rb
+    return (np.mean(rp) - np.mean(rb)) / (tracking_error_numpy_single(rp, rb) + eps)
 
 
 @numba.njit
@@ -166,8 +167,12 @@ def information(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 @numba.njit(fastmath=True)
 def up_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+    eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     up_mask = rb > 0
-    return np.sum(up_mask * rp / rb) / np.count_nonzero(up_mask)
+    n_nonzero = np.count_nonzero(up_mask)
+    if n_nonzero == 0:
+        return np.nan
+    return np.sum(up_mask * rp / (rb + eps)) / n_nonzero
 
 
 @numba.njit
@@ -193,8 +198,12 @@ def up_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 @numba.njit(fastmath=True)
 def down_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+    eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     down_mask = rb < 0
-    return np.sum(down_mask * rp / rb) / np.count_nonzero(down_mask)
+    n_nonzero = np.count_nonzero(down_mask)
+    if n_nonzero == 0:
+        return np.nan
+    return np.sum(down_mask * rp / rb) / n_nonzero
 
 
 @numba.njit
@@ -220,7 +229,8 @@ def down_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 @numba.njit(fastmath=True)
 def capture_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
-    return up_capture_numpy(rp, rb) / down_capture_numpy(rp, rb)
+    eps = np.finfo(rp.dtype).tiny  # Prevent division by zero
+    return up_capture_numpy(rp, rb) / (down_capture_numpy(rp, rb) + eps)
 
 
 def capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
