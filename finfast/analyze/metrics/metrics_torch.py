@@ -2,10 +2,10 @@ import torch
 
 
 def beta_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
-    rp_centered = rp - torch.mean(rp, dim=1)
-    rb_centered = rb - torch.mean(rb, dim=1)
-    rb_var = torch.mean(torch.square(rb), dim=1)
-    cov = torch.mean(rp_centered * rb_centered, dim=1)
+    rp_centered = rp - torch.mean(rp, dim=1, keepdim=True)
+    rb_centered = rb - torch.mean(rb, dim=1, keepdim=True)
+    rb_var = torch.mean(torch.square(rb_centered), dim=1, keepdim=True)
+    cov = torch.mean(rp_centered * rb_centered, dim=1, keepdim=True)
     return cov / rb_var
 
 
@@ -24,7 +24,7 @@ def beta(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
 
 def alpha_torch(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
     return torch.mean(rp, dim=1) - (
-        rf + (torch.mean(rb, dim=1) - rf) * beta_torch(rp, rb)
+        rf + (torch.mean(rb, dim=1, keepdim=True) - rf) * beta_torch(rp, rb)
     )
 
 
@@ -43,7 +43,7 @@ def alpha(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
 
 
 def sharpe_torch(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
-    rp_std, rp_mean = torch.std_mean(rp, dim=1)
+    rp_std, rp_mean = torch.std_mean(rp, dim=1, keepdim=True)
     return (rp_mean - rf) / rp_std
 
 
@@ -61,7 +61,7 @@ def sharpe(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
 
 
 def treynor_torch(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
-    return (torch.mean(rp, dim=1) - rf) / beta_torch(rp, rb)
+    return (torch.mean(rp, dim=1, keepdim=True) - rf) / beta_torch(rp, rb)
 
 
 def treynor(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
@@ -80,7 +80,7 @@ def treynor(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tenso
 
 def sortino_torch(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
     zero = torch.zeros((), dtype=rp.dtype, device=rp.device)
-    return (torch.mean(rp) - rf) / torch.std(torch.minimum(rp, zero))
+    return (torch.mean(rp, dim=1, keepdim=True) - rf) / torch.std(torch.minimum(rp, zero), dim=1, keepdim=True)
 
 
 def sortino(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
@@ -97,7 +97,7 @@ def sortino(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
 
 
 def information_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
-    return (torch.mean(rp, dim=1) - torch.mean(rb, dim=1)) / tracking_error_torch(
+    return (torch.mean(rp, dim=1, keepdim=True) - torch.mean(rb, dim=1, keepdim=True)) / tracking_error_torch(
         rp, rb
     )
 
@@ -117,7 +117,7 @@ def information(rp: torch.Tensor, rb: torch.Tensor) -> float:
 
 def up_capture_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
     up_mask = rb > 0
-    return torch.sum(up_mask * rp / rb, dim=1) / torch.count_nonzero(up_mask, dim=1)
+    return torch.sum(up_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(up_mask, dim=1, keepdim=True)
 
 
 def up_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
@@ -135,7 +135,7 @@ def up_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
 
 def down_capture_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
     down_mask = rb < 0
-    return torch.sum(down_mask * rp / rb) / torch.count_nonzero(down_mask)
+    return torch.sum(down_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(down_mask, dim=1, keepdim=True)
 
 
 def down_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
@@ -169,7 +169,7 @@ def capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
 
 
 def tracking_error_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
-    return torch.std(rp - rb, dim=1)
+    return torch.std(rp - rb, dim=1, keepdim=True)
 
 
 def tracking_error(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
