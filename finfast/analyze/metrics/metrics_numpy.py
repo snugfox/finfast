@@ -60,7 +60,7 @@ def alpha(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def sharpe_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
+def sharpe_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.floating:
     return (np.mean(rp) - rf) / np.std(rp)
 
 
@@ -86,7 +86,7 @@ def sharpe(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def treynor_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
+def treynor_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.floating:
     return (np.mean(rp) - rf) / beta_numpy_single(rp, rb)
 
 
@@ -113,7 +113,7 @@ def treynor(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def sortino_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
+def sortino_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.floating:
     return (np.mean(rp) - rf) / np.std(np.minimum(rp, 0))
 
 
@@ -139,7 +139,7 @@ def sortino(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def information_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+def information_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rp == rb
     return (np.mean(rp) - np.mean(rb)) / (tracking_error_numpy_single(rp, rb) + eps)
 
@@ -166,7 +166,7 @@ def information(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def up_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+def up_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     up_mask = rb > 0
     n_nonzero = np.count_nonzero(up_mask)
@@ -197,7 +197,7 @@ def up_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def down_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+def down_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     down_mask = rb < 0
     n_nonzero = np.count_nonzero(down_mask)
@@ -247,7 +247,7 @@ def capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
 
 
 @numba.njit(fastmath=True)
-def tracking_error_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+def tracking_error_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     return np.std(rp - rb)
 
 
