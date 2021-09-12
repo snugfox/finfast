@@ -2,7 +2,11 @@ import numba
 import numpy as np
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    ["float64(float64[:],float64[:])", "float32(float32[:],float32[:])"],
+    cache=True,
+    fastmath=True,
+)
 def beta_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     rp_centered = rp - np.mean(rp)
     rb_centered = rb - np.mean(rb)
@@ -11,7 +15,13 @@ def beta_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     return cov / rb_var
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def beta_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -32,12 +42,25 @@ def beta(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return beta_numpy(rp, rb)
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    [
+        "float64(float64[:],float64[:],float64)",
+        "float32(float32[:],float32[:],float32)",
+    ],
+    cache=True,
+    fastmath=True,
+)
 def alpha_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.floating) -> np.floating:
     return np.mean(rp) - (rf + (np.mean(rb) - rf) * beta_numpy_single(rp, rb))
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def alpha_numpy(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -59,12 +82,22 @@ def alpha(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return alpha_numpy(rp, rb, rf)
 
 
-@numba.njit(fastmath=True)
-def sharpe_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.floating:
+@numba.njit(
+    ["float64(float64[:],float64)", "float32(float32[:],float32)"],
+    cache=True,
+    fastmath=True,
+)
+def sharpe_numpy_single(rp: np.ndarray, rf: np.floating) -> np.floating:
     return (np.mean(rp) - rf) / np.std(rp)
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def sharpe_numpy(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -85,12 +118,27 @@ def sharpe(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return sharpe_numpy(rp, rf)
 
 
-@numba.njit(fastmath=True)
-def treynor_numpy_single(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.floating:
+@numba.njit(
+    [
+        "float64(float64[:],float64[:],float64)",
+        "float32(float32[:],float32[:],float32)",
+    ],
+    cache=True,
+    fastmath=True,
+)
+def treynor_numpy_single(
+    rp: np.ndarray, rb: np.ndarray, rf: np.floating
+) -> np.floating:
     return (np.mean(rp) - rf) / beta_numpy_single(rp, rb)
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def treynor_numpy(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -112,12 +160,22 @@ def treynor(rp: np.ndarray, rb: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return treynor_numpy(rp, rb, rf)
 
 
-@numba.njit(fastmath=True)
-def sortino_numpy_single(rp: np.ndarray, rf: np.ndarray) -> np.floating:
+@numba.njit(
+    ["float64(float64[:],float64)", "float32(float32[:],float32)"],
+    cache=True,
+    fastmath=True,
+)
+def sortino_numpy_single(rp: np.ndarray, rf: np.floating) -> np.floating:
     return (np.mean(rp) - rf) / np.std(np.minimum(rp, 0))
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def sortino_numpy(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -138,13 +196,59 @@ def sortino(rp: np.ndarray, rf: np.ndarray) -> np.ndarray:
     return sortino_numpy(rp, rf)
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    ["float64(float64[:],float64[:])", "float32(float32[:],float32[:])"],
+    cache=True,
+    fastmath=True,
+)
+def tracking_error_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
+    return np.std(rp - rb)
+
+
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
+def tracking_error_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+    out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
+    for mi in range(rp.shape[0]):
+        out[mi, 0] = tracking_error_numpy_single(rp[mi, :], rb[mi, :])
+    return out
+
+
+def tracking_error(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
+    """Returns the tracking error of a portfolio
+
+    Args:
+        rp (np.ndarray): Portfolio returns
+        rb (np.ndarray): Benchmark returns
+
+    Returns:
+        np.ndarray: Tracking error
+    """
+    return tracking_error_numpy(rp, rb)
+
+
+@numba.njit(
+    ["float64(float64[:],float64[:])", "float32(float32[:],float32[:])"],
+    cache=True,
+    fastmath=True,
+)
 def information_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rp == rb
     return (np.mean(rp) - np.mean(rb)) / (tracking_error_numpy_single(rp, rb) + eps)
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def information_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -165,7 +269,11 @@ def information(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return information_numpy(rp, rb)
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    ["float64(float64[:],float64[:])", "float32(float32[:],float32[:])"],
+    cache=True,
+    fastmath=True,
+)
 def up_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     up_mask = rb > 0
@@ -175,7 +283,13 @@ def up_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     return np.sum(up_mask * rp / (rb + eps)) / n_nonzero
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def up_capture_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -196,7 +310,11 @@ def up_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return up_capture_numpy(rp, rb)
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    ["float64(float64[:],float64[:])", "float32(float32[:],float32[:])"],
+    cache=True,
+    fastmath=True,
+)
 def down_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero when rb == 0.0
     down_mask = rb < 0
@@ -206,7 +324,13 @@ def down_capture_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
     return np.sum(down_mask * rp / rb) / n_nonzero
 
 
-@numba.njit
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+)
 def down_capture_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
     for mi in range(rp.shape[0]):
@@ -227,7 +351,14 @@ def down_capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     return down_capture_numpy(rp, rb)
 
 
-@numba.njit(fastmath=True)
+@numba.njit(
+    [
+        "float64[:,:](float64[:,:],float64[:,:])",
+        "float32[:,:](float32[:,:],float32[:,:])",
+    ],
+    cache=True,
+    fastmath=True,
+)
 def capture_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
     eps = np.finfo(rp.dtype).tiny  # Prevent division by zero
     return up_capture_numpy(rp, rb) / (down_capture_numpy(rp, rb) + eps)
@@ -244,29 +375,3 @@ def capture(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
         np.ndarray: Upside/downside capture ratio
     """
     return capture_numpy(rp, rb)
-
-
-@numba.njit(fastmath=True)
-def tracking_error_numpy_single(rp: np.ndarray, rb: np.ndarray) -> np.floating:
-    return np.std(rp - rb)
-
-
-@numba.njit
-def tracking_error_numpy(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
-    out = np.empty((rp.shape[0], 1), dtype=rp.dtype)
-    for mi in range(rp.shape[0]):
-        out[mi, 0] = tracking_error_numpy_single(rp[mi, :], rb[mi, :])
-    return out
-
-
-def tracking_error(rp: np.ndarray, rb: np.ndarray) -> np.ndarray:
-    """Returns the tracking error of a portfolio
-
-    Args:
-        rp (np.ndarray): Portfolio returns
-        rb (np.ndarray): Benchmark returns
-
-    Returns:
-        np.ndarray: Tracking error
-    """
-    return tracking_error_numpy(rp, rb)
