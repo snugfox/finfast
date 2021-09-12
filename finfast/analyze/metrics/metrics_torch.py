@@ -23,7 +23,7 @@ def beta(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
 
 
 def alpha_torch(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
-    return torch.mean(rp, dim=1) - (
+    return torch.mean(rp, dim=1, keepdim=True) - (
         rf + (torch.mean(rb, dim=1, keepdim=True) - rf) * beta_torch(rp, rb)
     )
 
@@ -80,7 +80,9 @@ def treynor(rp: torch.Tensor, rb: torch.Tensor, rf: torch.Tensor) -> torch.Tenso
 
 def sortino_torch(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
     zero = torch.zeros((), dtype=rp.dtype, device=rp.device)
-    return (torch.mean(rp, dim=1, keepdim=True) - rf) / torch.std(torch.minimum(rp, zero), dim=1, keepdim=True)
+    return (torch.mean(rp, dim=1, keepdim=True) - rf) / torch.std(
+        torch.minimum(rp, zero), dim=1, keepdim=True
+    )
 
 
 def sortino(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
@@ -97,9 +99,10 @@ def sortino(rp: torch.Tensor, rf: torch.Tensor) -> torch.Tensor:
 
 
 def information_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
-    return (torch.mean(rp, dim=1, keepdim=True) - torch.mean(rb, dim=1, keepdim=True)) / tracking_error_torch(
-        rp, rb
-    )
+    eps = torch.finfo(rp.dtype).tiny
+    return (
+        torch.mean(rp, dim=1, keepdim=True) - torch.mean(rb, dim=1, keepdim=True)
+    ) / (tracking_error_torch(rp, rb) + eps)
 
 
 def information(rp: torch.Tensor, rb: torch.Tensor) -> float:
@@ -117,7 +120,9 @@ def information(rp: torch.Tensor, rb: torch.Tensor) -> float:
 
 def up_capture_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
     up_mask = rb > 0
-    return torch.sum(up_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(up_mask, dim=1, keepdim=True)
+    return torch.sum(up_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(
+        up_mask, dim=1
+    ).view(-1, 1)
 
 
 def up_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
@@ -135,7 +140,9 @@ def up_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
 
 def down_capture_torch(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:
     down_mask = rb < 0
-    return torch.sum(down_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(down_mask, dim=1, keepdim=True)
+    return torch.sum(down_mask * rp / rb, dim=1, keepdim=True) / torch.count_nonzero(
+        down_mask, dim=1
+    ).view(-1, 1)
 
 
 def down_capture(rp: torch.Tensor, rb: torch.Tensor) -> torch.Tensor:

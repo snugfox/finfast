@@ -1,8 +1,9 @@
 import argparse
 import numpy as np
 from os import path
+import torch
 
-from finfast.analyze import metrics_numpy as metrics
+from finfast.analyze import metrics_numpy, metrics_torch
 
 from typing import Mapping, Optional
 
@@ -65,16 +66,61 @@ def calc_metrics():
         rf = testdata["rf"]
 
     expected_metrics: dict[str, np.ndarray] = {}
-    expected_metrics["beta"] = metrics.beta(rp, rb)
-    expected_metrics["alpha"] = metrics.alpha(rp, rb, rf)
-    expected_metrics["sharpe"] = metrics.sharpe(rp, rf)
-    expected_metrics["treynor"] = metrics.treynor(rp, rb, rf)
-    expected_metrics["sortino"] = metrics.sortino(rp, rf)
-    expected_metrics["information"] = metrics.information(rp, rb)
-    expected_metrics["up_capture"] = metrics.up_capture(rp, rb)
-    expected_metrics["down_capture"] = metrics.down_capture(rp, rb)
-    expected_metrics["capture"] = metrics.capture(rp, rb)
-    expected_metrics["tracking_error"] = metrics.tracking_error(rp, rb)
+    for dtype, label in [(np.float64, "f64"), (np.float32, "f32")]:
+        rp_, rb_, rf_ = rp.astype(dtype), rb.astype(dtype), rf.astype(dtype)
+        expected_metrics[f"numpy/beta/{label}"] = metrics_numpy.beta(rp_, rb_)
+        expected_metrics[f"numpy/alpha/{label}"] = metrics_numpy.alpha(rp_, rb_, rf_)
+        expected_metrics[f"numpy/sharpe/{label}"] = metrics_numpy.sharpe(rp_, rf_)
+        expected_metrics[f"numpy/treynor/{label}"] = metrics_numpy.treynor(
+            rp_, rb_, rf_
+        )
+        expected_metrics[f"numpy/sortino/{label}"] = metrics_numpy.sortino(rp_, rf_)
+        expected_metrics[f"numpy/information/{label}"] = metrics_numpy.information(
+            rp_, rb_
+        )
+        expected_metrics[f"numpy/up_capture/{label}"] = metrics_numpy.up_capture(
+            rp_, rb_
+        )
+        expected_metrics[f"numpy/down_capture/{label}"] = metrics_numpy.down_capture(
+            rp_, rb_
+        )
+        expected_metrics[f"numpy/capture/{label}"] = metrics_numpy.capture(rp_, rb_)
+        expected_metrics[
+            f"numpy/tracking_error/{label}"
+        ] = metrics_numpy.tracking_error(rp_, rb_)
+
+    for dtype, label in [(torch.float64, "f64"), (torch.float32, "f32")]:
+        rp_ = torch.from_numpy(rp).to(dtype)
+        rb_ = torch.from_numpy(rb).to(dtype)
+        rf_ = torch.from_numpy(rf).to(dtype)
+        expected_metrics[f"torch/beta/{label}"] = metrics_torch.beta(rp_, rb_).numpy()
+        expected_metrics[f"torch/alpha/{label}"] = metrics_torch.alpha(
+            rp_, rb_, rf_
+        ).numpy()
+        expected_metrics[f"torch/sharpe/{label}"] = metrics_torch.sharpe(
+            rp_, rf_
+        ).numpy()
+        expected_metrics[f"torch/treynor/{label}"] = metrics_torch.treynor(
+            rp_, rb_, rf_
+        ).numpy()
+        expected_metrics[f"torch/sortino/{label}"] = metrics_torch.sortino(
+            rp_, rf_
+        ).numpy()
+        expected_metrics[f"torch/information/{label}"] = metrics_torch.information(
+            rp_, rb_
+        ).numpy()
+        expected_metrics[f"torch/up_capture/{label}"] = metrics_torch.up_capture(
+            rp_, rb_
+        ).numpy()
+        expected_metrics[f"torch/down_capture/{label}"] = metrics_torch.down_capture(
+            rp_, rb_
+        ).numpy()
+        expected_metrics[f"torch/capture/{label}"] = metrics_torch.capture(
+            rp_, rb_
+        ).numpy()
+        expected_metrics[
+            f"torch/tracking_error/{label}"
+        ] = metrics_torch.tracking_error(rp_, rb_).numpy()
 
     np.savez(rel_curr_dir("metrics_results.npz"), **expected_metrics)
 
