@@ -1,333 +1,454 @@
 import numpy as np
-from os import path
+from numpy.lib.arraysetops import isin
 import torch
 import pytest
+import dataclasses
 
-from finfast.analyze import metrics_numpy, metrics_torch
+from finfast.analyze import metrics as metrics_numpy
+from finfast_torch.analyze import metrics as metrics_torch
 
-from typing import Any, Mapping, NamedTuple, Optional, Type, Union
+from typing import Generic, Optional, TypeVar
 
-
-class NumpyTestdata(NamedTuple):
-    dtype: Type[np.dtype]
-    rp: np.ndarray
-    rb: np.ndarray
-    rf: np.ndarray
-    results: dict[str, np.ndarray]
+TensorT = TypeVar("TensorT")
 
 
-class TorchTestdata(NamedTuple):
-    dtype: torch.dtype
-    rp: torch.Tensor
-    rb: torch.Tensor
-    rf: torch.Tensor
-    results: dict[str, torch.Tensor]
+@dataclasses.dataclass
+class MetricsTestdata(Generic[TensorT]):
+    rp: TensorT
+    want: TensorT
+    rb: Optional[TensorT] = None
+    rf: Optional[TensorT] = None
+
+    def as_numpy(self) -> "MetricsTestdata[np.ndarray]":
+        return MetricsTestdata[np.ndarray](
+            rp=self.rp.numpy(),
+            want=self.want.numpy(),
+            rb=(self.rb.numpy() if self.rb is not None else None),
+            rf=(self.rf.numpy() if self.rf is not None else None),
+        )
+
+    def as_torch(self) -> "MetricsTestdata[torch.Tensor]":
+        return MetricsTestdata[torch.Tensor](
+            rp=torch.from_numpy(self.rp),
+            want=torch.from_numpy(self.want),
+            rb=(torch.from_numpy(self.rb) if self.rb is not None else None),
+            rf=(torch.from_numpy(self.rf) if self.rf is not None else None),
+        )
 
 
-def dtype_to_str(dtype: Union[Type[np.dtype], torch.dtype]) -> str:
-    if dtype == np.float64 or dtype == torch.float64:
-        return "f64"
-    elif dtype == np.float32 or dtype == torch.float32:
-        return "f32"
-    raise ValueError("unrecognized dtype")
-
-
-@pytest.fixture(scope="class", params=[np.float64, np.float32], ids=["f64", "f32"])
-def numpy_testdata(request: Any) -> NumpyTestdata:
-    dtype: Type[np.dtype] = request.param
-    rp: Optional[np.ndarray] = None
-    rb: Optional[np.ndarray] = None
-    rf: Optional[np.ndarray] = None
-    results: dict[str, np.ndarray] = None
-
-    testdata_filename = path.join(path.dirname(__file__), "test_data", "metrics.npz")
-    testdata_results_filename = path.join(
-        path.dirname(__file__), "test_data", "metrics_results.npz"
+def beta_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.03, 0.05, -0.05, 0.09],
+                [-0.005, 0.0, -0.025, 0.01],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.01, -0.02, 0.03, -0.04],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [1.0, -1.0],
+                [2.0, -2.0],
+                [0.5, -0.5],
+            ],
+            dtype=np.float64,
+        ),
     )
-    with np.load(testdata_filename) as testdata:
-        testdata: Mapping[str, np.ndarray]
-        rp = testdata["rp"].astype(dtype)
-        rb = testdata["rb"].astype(dtype)
-        rf = testdata["rf"].astype(dtype)
-    with np.load(testdata_results_filename) as testdata_results:
-        testdata_results: Mapping[str, np.ndarray]
-        results: dict[str, np.ndarray] = {}
-        for key, result in testdata_results.items():
-            module_key, key = key.split("/", 1)
-            if module_key == "numpy":
-                metric_key, dtype_key = key.split("/")
-                if dtype_key == dtype_to_str(dtype):
-                    results[metric_key] = result
-    return NumpyTestdata(dtype, rp, rb, rf, results)
 
 
-@pytest.fixture(
-    scope="class", params=[torch.float64, torch.float32], ids=["f64", "f32"]
-)
-def torch_testdata(request: Any) -> TorchTestdata:
-    dtype: torch.dtype = request.param
-    rp: Optional[torch.Tensor] = None
-    rb: Optional[torch.Tensor] = None
-    rf: Optional[torch.Tensor] = None
-    results: dict[str, torch.Tensor] = None
-
-    testdata_filename = path.join(path.dirname(__file__), "test_data", "metrics.npz")
-    testdata_results_filename = path.join(
-        path.dirname(__file__), "test_data", "metrics_results.npz"
+def alpha_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.03, 0.05, -0.05, 0.09],
+                [-0.005, 0.0, -0.025, 0.01],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.01, -0.02, 0.03, -0.04],
+            ],
+            dtype=np.float64,
+        ),
+        rf=np.asarray(0.01, dtype=np.float64),
+        want=np.asarray(
+            [
+                [0.0, -0.02],
+                [0.02, -0.02],
+                [-0.015, -0.025],
+            ],
+            dtype=np.float64,
+        ),
     )
-    with np.load(testdata_filename) as testdata:
-        testdata: Mapping[str, torch.Tensor]
-        rp = torch.from_numpy(testdata["rp"]).to(dtype)
-        rb = torch.from_numpy(testdata["rb"]).to(dtype)
-        rf = torch.from_numpy(testdata["rf"]).to(dtype)
-    with np.load(testdata_results_filename) as testdata_results:
-        testdata_results: Mapping[str, torch.Tensor]
-        results: dict[str, torch.Tensor] = {}
-        for key, result in testdata_results.items():
-            module_key, key = key.split("/", 1)
-            if module_key == "torch":
-                metric_key, dtype_key = key.split("/")
-                if dtype_key == dtype_to_str(dtype):
-                    results[metric_key] = result
-    return TorchTestdata(dtype, rp, rb, rf, results)
+
+
+def sharpe_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.03, 0.05, -0.05, 0.09],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        rf=np.asarray(0.01, dtype=np.float64),
+        want=np.asarray(
+            [
+                [0.0],
+                [0.39223227027636803],
+                [-np.inf],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def treynor_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.03, 0.05, -0.05, 0.09],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.01, -0.02, 0.03, -0.04],
+            ],
+            dtype=np.float64,
+        ),
+        rf=np.asarray(0.01, dtype=np.float64),
+        want=np.asarray(
+            [
+                [0.0, 0.0],
+                [0.01, -0.01],
+                [-np.inf, -np.inf],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def sortino_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, -0.02, -0.03, 0.04],
+                [0.03, 0.05, -0.05, 0.09],
+                [0.0, 0.01, 0.0, 0.01],
+            ],
+            dtype=np.float64,
+        ),
+        rf=np.asarray(0.01, dtype=np.float64),
+        want=np.asarray(
+            [
+                [-0.769800358919501],
+                [0.923760430703401],
+                [-np.inf],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def tracking_error_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.02, 0.03, -0.02, 0.05],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.01, -0.02, 0.03, -0.04],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [0.0, 0.05099019513592785],
+                [0.0, 0.05099019513592785],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def information_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.01, -0.02, 0.03, -0.04],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [0.0, 0.3922322702763681, 0.3922322702763681],
+                [-0.3922322702763681, 0.3922322702763681, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def up_capture_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.02, -0.04, 0.06, -0.08],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.05, 0.04],
+                [0.0, -0.01, 0.0, -0.01],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [1.0, np.nan],
+                [-2.0, np.nan],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def down_capture_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.02, -0.04, 0.06, -0.08],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.03, 0.04, -0.03, 0.06],
+                [0.0, 0.01, 0.0, 0.01],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [1.0, np.nan],
+                [-2.0, np.nan],
+            ],
+            dtype=np.float64,
+        ),
+    )
+
+
+def capture_testdata() -> MetricsTestdata[np.ndarray]:
+    return MetricsTestdata[np.ndarray](
+        rp=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [-0.02, -0.04, 0.06, -0.08],
+            ],
+            dtype=np.float64,
+        ),
+        rb=np.asarray(
+            [
+                [0.01, 0.02, -0.03, 0.04],
+                [0.0, 0.0, 0.0, 0.0],
+            ],
+            dtype=np.float64,
+        ),
+        want=np.asarray(
+            [
+                [1.0, np.nan],
+                [-2.0, -np.nan],
+            ],
+            dtype=np.float64,
+        ),
+    )
 
 
 class TestMetricsNumpy:
-    def test_beta(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["beta"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_beta(self) -> None:
+        td = beta_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.beta(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.beta(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_alpha(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["alpha"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_alpha(self) -> None:
+        td = alpha_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.alpha(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-                numpy_testdata.rf,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.alpha(td.rp, td.rb, td.rf)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_sharpe(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["sharpe"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_sharpe(self) -> None:
+        td = sharpe_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.sharpe(
-                numpy_testdata.rp,
-                numpy_testdata.rf,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.sharpe(td.rp, td.rf)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_treynor(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["treynor"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_treynor(self) -> None:
+        td = treynor_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.treynor(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-                numpy_testdata.rf,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.treynor(td.rp, td.rb, td.rf)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_sortino(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["sortino"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_sortino(self) -> None:
+        td = sortino_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.sortino(
-                numpy_testdata.rp,
-                numpy_testdata.rf,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.sortino(td.rp, td.rf)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_information(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["information"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_tracking_error(self) -> None:
+        td = tracking_error_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.information(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.tracking_error(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want, atol=1e-12)
 
-    def test_up_capture(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["up_capture"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_information(self) -> None:
+        td = information_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.up_capture(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.information(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_down_capture(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["down_capture"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_up_capture(self) -> None:
+        td = up_capture_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.down_capture(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.up_capture(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_capture(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["capture"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_down_capture(self) -> None:
+        td = down_capture_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.capture(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.down_capture(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
-    def test_tracking_error(_, numpy_testdata: NumpyTestdata) -> None:
-        want = numpy_testdata.results["tracking_error"]
-        want_dtype = np.dtype(numpy_testdata.dtype)
+    def test_capture(self) -> None:
+        td = capture_testdata()
         with np.testing.assert_no_warnings():
-            got = metrics_numpy.tracking_error(
-                numpy_testdata.rp,
-                numpy_testdata.rb,
-            )
-            assert got.dtype == want_dtype
-            assert got.flags.c_contiguous
-            np.testing.assert_allclose(got, want)
+            got = metrics_numpy.capture(td.rp, td.rb)
+            assert got.dtype == td.want.dtype
+            assert got.shape == td.want.shape
+            np.testing.assert_allclose(got, td.want)
 
 
 class TestMetricsTorch:
-    def test_beta(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["beta"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.beta(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_beta(self) -> None:
+        td = beta_testdata().as_torch()
+        got = metrics_torch.beta(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_alpha(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["alpha"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.alpha(
-            torch_testdata.rp,
-            torch_testdata.rb,
-            torch_testdata.rf,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_alpha(self) -> None:
+        td = alpha_testdata().as_torch()
+        got = metrics_torch.alpha(td.rp, td.rb, td.rf)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        np.testing.assert_allclose(got, td.want)
 
-    def test_sharpe(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["sharpe"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.sharpe(
-            torch_testdata.rp,
-            torch_testdata.rf,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_sharpe(self) -> None:
+        td = sharpe_testdata().as_torch()
+        got = metrics_torch.sharpe(td.rp, td.rf)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_treynor(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["treynor"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.treynor(
-            torch_testdata.rp,
-            torch_testdata.rb,
-            torch_testdata.rf,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_treynor(self) -> None:
+        td = treynor_testdata().as_torch()
+        got = metrics_torch.treynor(td.rp, td.rb, td.rf)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_sortino(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["sortino"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.sortino(
-            torch_testdata.rp,
-            torch_testdata.rf,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_sortino(self) -> None:
+        td = sortino_testdata().as_torch()
+        got = metrics_torch.sortino(td.rp, td.rf)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_information(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["information"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.information(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_tracking_error(self) -> None:
+        td = tracking_error_testdata().as_torch()
+        got = metrics_torch.tracking_error(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_up_capture(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["up_capture"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.up_capture(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_information(self) -> None:
+        td = information_testdata().as_torch()
+        got = metrics_torch.information(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_down_capture(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["down_capture"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.down_capture(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_up_capture(self) -> None:
+        td = up_capture_testdata().as_torch()
+        got = metrics_torch.up_capture(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_capture(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["capture"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.capture(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_down_capture(self) -> None:
+        td = down_capture_testdata().as_torch()
+        got = metrics_torch.down_capture(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
-    def test_tracking_error(_, torch_testdata: TorchTestdata) -> None:
-        want = torch_testdata.results["tracking_error"]
-        want_dtype = torch_testdata.dtype
-        got = metrics_torch.tracking_error(
-            torch_testdata.rp,
-            torch_testdata.rb,
-        )
-        assert got.dtype == want_dtype
-        assert got.is_contiguous()
-        torch.testing.assert_allclose(got, want)
+    def test_capture(self) -> None:
+        td = capture_testdata().as_torch()
+        got = metrics_torch.capture(td.rp, td.rb)
+        assert got.dtype == td.want.dtype
+        assert got.shape == td.want.shape
+        torch.testing.assert_allclose(got, td.want)
 
 
 if __name__ == "__main__":

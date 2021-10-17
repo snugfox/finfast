@@ -18,5 +18,5 @@ setup(
     install_requires=requirements,
     long_description=long_description,
     long_description_content_type="text/markdown",
-    packages=["finfast"],
+    packages=["finfast", "finfast_torch"],
 )
