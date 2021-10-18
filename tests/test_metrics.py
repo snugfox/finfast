@@ -1,8 +1,7 @@
-import numpy as np
-from numpy.lib.arraysetops import isin
-import torch
-import pytest
 import dataclasses
+import numpy as np
+import pytest
+import torch
 
 from finfast.analyze import metrics as metrics_numpy
 from finfast_torch.analyze import metrics as metrics_torch

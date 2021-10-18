@@ -1,7 +1,7 @@
-import torch
+import numpy as np
 import dataclasses
 
-from finfast_torch import kernels
+from finfast import kernels
 
 
 @dataclasses.dataclass
@@ -10,14 +10,14 @@ class LinearCombinationNormResult:
     other normal distributions
 
     Attributes:
-        mean (torch.Tensor): n-vector where the i-th entry corresponds to the
-          i-th distribution mean
-        var (torch.Tensor): n-vector where the i-th entry corresponds to the
-          i-th distribution variance
+        mean (np.ndarray): n-vector where the i-th entry corresponds to the i-th
+          distribution mean
+        var (np.ndarray): n-vector where the i-th entry corresponds to the i-th
+          distribution variance
     """
 
-    mean: torch.Tensor
-    var: torch.Tensor
+    mean: np.ndarray
+    var: np.ndarray
 
 
 @dataclasses.dataclass
@@ -26,29 +26,29 @@ class LinearCombinationNormCovResult:
     other normal distributions
 
     Attributes:
-        mean (torch.Tensor): n-vector where the i-th entry corresponds to the
-          i-th distribution mean
-        cov (torch.Tensor): n-by-n covariance matrix where the (i, j) entry
+        mean (np.ndarray): n-vector where the i-th entry corresponds to the i-th
+          distribution mean
+        cov (np.ndarray): n-by-n covariance matrix where the (i, j) entry
           corresponds to the covariance of the i-th and j-th linearly combined
           distributions
     """
 
-    mean: torch.Tensor
-    cov: torch.Tensor
+    mean: np.ndarray
+    cov: np.ndarray
 
 
 def lincomb_norm(
-    mean: torch.Tensor, cov: torch.Tensor, coeff: torch.Tensor
+    mean: np.ndarray, cov: np.ndarray, coeff: np.ndarray
 ) -> LinearCombinationNormResult:
     """Returns the normal distributions for w linear combinations of n normal
     distributions
 
     Args:
-        mean (torch.Tensor): n-vector where the i-th entry corresponds to the
-          i-th distribution mean
-        cov (torch.Tensor): n-by-n covariance matrix where the (i, j) entry
+        mean (np.ndarray): n-vector where the i-th entry corresponds
+          to the i-th distribution mean
+        cov (np.ndarray): n-by-n covariance matrix where the (i, j) entry
           corresponds to the covariance of the i-th and j-th distributions
-        coeff (torch.Tensor): w-by-n matrix where the (i, j) entry corresponds
+        coeff (np.ndarray): w-by-n matrix where the (i, j) entry corresponds
           to the i-th set and j-th coefficient for the j-th normal distribution
 
     Returns:
@@ -68,7 +68,7 @@ def lincomb_norm(
 
 
 def lincomb_norm_cov(
-    mean: torch.Tensor, cov: torch.Tensor, coeff: torch.Tensor
+    mean: np.ndarray, cov: np.ndarray, coeff: np.ndarray
 ) -> LinearCombinationNormCovResult:
     """Returns the normal distributions for w linear combinations of n normal
     distributions
@@ -77,12 +77,12 @@ def lincomb_norm_cov(
     matrix instead of just the variances.
 
     Args:
-        mean (torch.Tensor): n-vector where the i-th entry corresponds to the
-          i-th distribution mean
-        cov (torch.Tensor): n-by-n covariance matrix where the (i, j) entry
+        mean (np.ndarray): n-vector where the i-th entry corresponds to the i-th
+          distribution mean
+        cov (np.ndarray): n-by-n covariance matrix where the (i, j) entry
           corresponds to the covariance of the i-th and j-th distributions
-        coeff (torch.Tensor): w-by-n matrix where the (i, j) entry corresponds
-          to the i-th set and j-th coefficient for the j-th normal distribution
+        coeff (np.ndarray): w-by-n matrix where the (i, j) entry corresponds to
+          the i-th set and j-th coefficient for the j-th normal distribution
 
     Returns:
         LinearCombinationCovResult: w normal distributions from the linear
