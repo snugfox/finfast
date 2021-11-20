@@ -1,6 +1,23 @@
 import torch
 
 
+def lincomb(rp: torch.Tensor, coeff: torch.Tensor) -> torch.Tensor:
+    """Returns the normal distributions for w linear combinations of p
+    portfolios
+
+    Args:
+        rp (torch.Tensor): p-by-n matrix where the (i, j) entry corresponds to
+          the j-th return of the i-th portfolio
+        coeff (torch.Tensor): w-by-p matrix where the (i, j) entry corresponds
+          to the i-th set and j-th coefficient for the j-th portfolio
+
+    Returns:
+        torch.Tensor: w-by-n matrix where the (i, j) entry corresponds to the
+        j-th return for i-th portfolio from the linear combination
+    """
+    return coeff @ rp
+
+
 def lincomb_norm_mean(mean: torch.Tensor, coeff: torch.Tensor) -> torch.Tensor:
     """Returns the means for w linear combinations of n normal distributions
 

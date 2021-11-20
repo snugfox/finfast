@@ -1,5 +1,20 @@
 import numpy as np
 
+def lincomb(rp: np.ndarray, coeff: np.ndarray) -> np.ndarray:
+    """Returns the normal distributions for w linear combinations of p
+    portfolios
+
+    Args:
+        rp (np.ndarray): p-by-n matrix where the (i, j) entry corresponds to the
+          j-th return of the i-th portfolio
+        coeff (np.ndarray): w-by-p matrix where the (i, j) entry corresponds to
+          the i-th set and j-th coefficient for the j-th portfolio
+
+    Returns:
+        np.ndarray: w-by-n matrix where the (i, j) entry corresponds to the
+        j-th return for i-th portfolio from the linear combination
+    """
+    return coeff @ rp
 
 def lincomb_norm_mean(mean: np.ndarray, coeff: np.ndarray) -> np.ndarray:
     """Returns the means for w linear combinations of n normal distributions

@@ -37,6 +37,28 @@ class LinearCombinationNormCovResult:
     cov: torch.Tensor
 
 
+def lincomb(rp: torch.Tensor, coeff: torch.Tensor) -> torch.Tensor:
+    """Returns the normal distributions for w linear combinations of p
+    portfolios
+
+    Args:
+        rp (torch.Tensor): p-by-n matrix where the (i, j) entry corresponds to
+          the j-th return of the i-th portfolio
+        coeff (torch.Tensor): w-by-p matrix where the (i, j) entry corresponds
+          to the i-th set and j-th coefficient for the j-th portfolio
+
+    Returns:
+        torch.Tensor: w-by-n matrix where the (i, j) entry corresponds to the
+        j-th return for i-th portfolio from the linear combination
+    """
+    if not (
+        rp.ndim == coeff.ndim == 2
+        and rp.shape[0] == coeff.shape[1]
+    ):
+        raise RuntimeError
+    return kernels.lincomb(rp, coeff)
+
+
 def lincomb_norm(
     mean: torch.Tensor, cov: torch.Tensor, coeff: torch.Tensor
 ) -> LinearCombinationNormResult:
