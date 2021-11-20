@@ -1,6 +1,6 @@
 import torch
 
-from finfast_torch import kernels
+from . import metrics_kernels as kernels
 
 from typing import Optional
 

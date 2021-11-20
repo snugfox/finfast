@@ -1,6 +1,6 @@
 import numpy as np
 
-from finfast import kernels
+from . import metrics_kernels as kernels
 
 from typing import Optional
 

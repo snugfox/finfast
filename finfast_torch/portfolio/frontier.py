@@ -1,7 +1,7 @@
 import torch
 import dataclasses
 
-from finfast_torch import kernels
+from . import frontier_kernels as kernels
 
 
 @dataclasses.dataclass

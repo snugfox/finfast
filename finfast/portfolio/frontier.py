@@ -1,7 +1,7 @@
 import numpy as np
 import dataclasses
 
-from finfast import kernels
+from . import frontier_kernels as kernels
 
 
 @dataclasses.dataclass
